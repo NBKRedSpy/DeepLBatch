@@ -90,3 +90,7 @@ Options:
   -h, --help                         Show help message
 
 ```
+
+# Database
+The database is named TranslationCache.db and is created in the application's directory.  
+This is a LiteDb database and can be viewed using LiteDb Studio, which is located at https://github.com/mbdavid/LiteDB.Studio/releases .
