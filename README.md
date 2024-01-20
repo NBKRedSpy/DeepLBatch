@@ -1,6 +1,6 @@
 # DeepLBatch
 
-A command line utility to translate lines in a text file using DeepL.
+A command line utility using DeepL.com's API to translate each line in a file as a stand alone translation.
 Includes batching to reduce API call usage and a cache to reuse previously translated text.
 
 # Usage
