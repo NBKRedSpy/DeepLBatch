@@ -61,6 +61,12 @@ namespace DeepLBatch
 
                 if (sourceLanguage == null && IgnoreCache == false)
                 {
+                    //TODO: Auto detect note:
+                    //  I believe an auto detect entry should be able to do a cache check using blank for the source.by using blank for the source string.
+                    //  It should be deterministic.
+                    //  
+                    //  In that case, cache should store "" and another entry for the detected target language, even if the detected language is inaccurate.
+                    //  For example, if it is detected as Japanese for text that is obviously English.
                     throw new ArgumentException("Source language must be set if IgnoreCache is false", "SourceLanguage, IgnoreCache");
                 }
 
@@ -128,8 +134,11 @@ namespace DeepLBatch
 
                             });
 
+                            //TODO: see Auto detect note. I think at the least the auto detect should be also be stored
+                            //  with a blank for the source language to get cache hits.
+
                             //Add each unique item to the cache
-                            //Always add, even with "ignore cache" enabled.
+                            //Always add, even with "ignore cache" enabled.  
                             _repository.UpsertByKey(x.First.First());
                         }
                     );
