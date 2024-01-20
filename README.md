@@ -26,9 +26,14 @@ To delete a stored API key, either use clear-api-key command or delete the ```us
 ## Parameter Usage
 
 
-Example Translation:
+Example Chinese to English Translation:
 ```
 DeepLBatch.exe translate "c:\work\input.txt" "c:\work\output.txt" zh
+```
+
+Example Chinese to German Translation
+```
+DeepLBatch.exe translate --destination-language de c:\work\translation.txt c:\work\out.txt zh
 ```
 
 
