@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Transactions;
@@ -51,23 +52,31 @@ namespace DeepLBatch
 
         [Command(Aliases = ["t"], Description = "Translates the lines in input file and writes to the output file.  Alias is t.")]
         public void Translate(
-            [Argument] string inputFile, 
+            [Argument] string inputFile,
             [Argument] string outputFile,
 
-            [Option(Description = "If not provided, will use the API key previously stored with the set-API-key command if available.")]
+            [Option('a', Description = "If not provided, will use the API key previously stored with the set-API-key command if available.")]
             string? apiKey = null,
-            
+
             [Option(Description = "The number of lines of text to send in a single DeepL.com API call.")]
             int batchSize = 500,
-            
+
             [Argument(Description = "The source language. Defaults to auto detect.  It is recommended to provide the code for the source language to ensure an accurate translation.  The list of Language codes can be found here https://www.deepl.com/docs-api/translate-text")]
             string? sourceLanguage = null,
-            
+
             [Option(Description = "The destination language. The list of Language codes can be found here https://www.deepl.com/docs-api/translate-text")]
             string destinationLanguage = LanguageCode.EnglishAmerican,
 
             [Option(Description = "If true, will not use the translation cache, resulting in every line always being sent to DeepL.")]
-            bool ignoreCache = false 
+            bool ignoreCache = false,
+
+            [Option('d', Description = "Throws an error if an entry is not in cache.  Prevents API calls for debugging purposes.")]
+            bool noApiRequests = false,
+
+            [Option('p', Description = "Exports the source text and the translated text in a pipe delminited format.")]
+            bool exportPsv = false
+
+
             )
         {
             TranslationProcessor processor = null!;
@@ -103,7 +112,7 @@ Provide a source language or use --ignore-cache to not use the cache.
                     Console.CursorVisible = false;
                     processor.ProgressUpdate += Processor_ProgressUpdate;
 
-                    var translations = processor.TranslateFile(inputFile, outputFile, batchSize);
+                    var translations = processor.TranslateFile(inputFile, outputFile, noApiRequests, exportPsv, batchSize);
                 }
 
                 Console.WriteLine("\rTranslation Completed                                            ");

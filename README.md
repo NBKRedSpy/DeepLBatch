@@ -39,6 +39,14 @@ DeepLBatch.exe translate --destination-language de c:\work\translation.txt c:\wo
 
 Use ```--help``` to access the help information.  Use ```[name of command] --help``` to get more info on a specific command.
 
+## Spreadsheet Import Issue
+
+Spreadsheets sometimes have issues with non English characters and can import incorrectly.  Such as trying to split characters that "look like" a comma into different columns
+or not splitting lines correctly.
+
+This is a common spreadsheet issue and not realted to the translation.  In this case, try using the translate command's psv option (-p)
+The output file will be in the format of ```Input Text|Output Text```.  When importing into the spreadsheet, use the "split text to columns" command with | (aka pipe) as the delimiter. 
+
 ### Overview Help Output
 ```
 Usage: DeepLBatch [command]
@@ -66,10 +74,9 @@ Options:
 ### Translate Command Help Output
 
 ```
+Usage: DeepLBatch translate [--api-key <String>] [--batch-size <Int32>] [--destination-language <String>] [--ignore-cache] [--no-api-requests] [--export-psv] [--help] input-file output-file source-language
 
-Usage: DeepLBatch translate [--api-key <String>] [--batch-size <Int32>] [--destination-language <String>] [--ignore-cache] [--help] input-file output-file source-language
-
-Translates the lines in input file and writes to the output file.  Alias is t
+Translates the lines in input file and writes to the output file.  Alias is t.
 Description:
     Translates text in a file using DeepL.com and writes the results to an output file.
     Uses a local cache for previously translated text to reduce API calls.
@@ -83,10 +90,12 @@ Arguments:
   2: source-language    The source language. Defaults to auto detect.  It is recommended to provide the code for the source language to ensure an accurate translation.  The list of Language codes can be found here https://www.deepl.com/docs-api/translate-text
 
 Options:
-  --api-key <String>                 If not provided, will use the API key previously stored with the set-API-key command if available.
+  -a, --api-key <String>             If not provided, will use the API key previously stored with the set-API-key command if available.
   --batch-size <Int32>               The number of lines of text to send in a single DeepL.com API call. (Default: 500)
   --destination-language <String>    The destination language. The list of Language codes can be found here https://www.deepl.com/docs-api/translate-text (Default: en-US)
-  --ignore-cache                     If true, will not use the translation cache, resulting in every line always being sent to DeepL
+  --ignore-cache                     If true, will not use the translation cache, resulting in every line always being sent to DeepL.
+  -d, --no-api-requests              Throws an error if an entry is not in cache.  Prevents API calls for debugging purposes.
+  -p, --export-psv                   Exports the source text and the translated text in a pipe delminited format.
   -h, --help                         Show help message
 
 ```

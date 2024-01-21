@@ -1,4 +1,5 @@
-﻿using DeepL.Model;
+﻿using Csv;
+using DeepL.Model;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
@@ -47,8 +48,8 @@ namespace DeepLBatch
         /// <param name="cancellationToken"></param>
         /// <returns>The results of the translation.</returns>
         /// <exception cref="BatchParseException">Thrown when a translation files</exception>
-        public List<Translation> Translate(IEnumerable<string> strings, 
-            CancellationToken cancellationToken = default)
+        public List<Translation> Translate(IEnumerable<string> strings,
+            bool noApiRequests, CancellationToken cancellationToken = default)
         {
             List<Translation> results = new List<Translation>();
 
@@ -101,6 +102,12 @@ namespace DeepLBatch
                     //Group by unique text to translate
                     List<IGrouping<string, Translation>> groupedTranslationRequests = deepLTranslationList.GroupBy(x => x.Text).ToList();
 
+
+                    if(noApiRequests)
+                    {
+                        //For debugging purposes
+                        throw new ApplicationException("A API translate was requested with no-api-requests enabled.");
+                    }
 
                     //Send to DeepL
                     TextResult[]? translations = _deepLTranslator.Translate(groupedTranslationRequests.Select(x => x.Key), cancellationToken);
@@ -163,14 +170,37 @@ namespace DeepLBatch
         /// <param name="batchSize">The number of lines to send to DeepL per api call.</param>
         /// <param name="cancellationToken">Can cancel the translations</param>
         /// <returns></returns>
-        public int TranslateFile(string inputFile, string outputFile, int batchSize = 100, CancellationToken cancellationToken = default)
+        public int TranslateFile(string inputFile, string outputFile, bool noApiRequests, bool exportPsv, int batchSize = 100, CancellationToken cancellationToken = default)
         {
             List<Translation> results;
 
-            results = TranslateFile(inputFile, batchSize);
+            results = TranslateFile(inputFile, noApiRequests, batchSize);
 
-            string outputText =  string.Join('\n', results.Select(x=> x.TranslatedText));
-            File.WriteAllText(outputFile,outputText);
+            //Debug
+            //string outputText = string.Join('\n', results.Select(x => String.Join("|", x.Text, x.TranslatedText)));
+
+            string outputText;
+
+            if(exportPsv)
+            {
+
+                using (StreamWriter fileWriter =  File.CreateText(outputFile))
+                {
+                    //CsvWriter.Write(fileWriter, Array.Empty<string>(), results.Select(x => new string[] { x.Text, x.TranslatedText }), '|', true);
+                    CsvWriter.Write(fileWriter, new string[] { "", "" }, results.Select(x => new string[] { x.Text, x.TranslatedText }), '|', true);
+                    fileWriter.Flush();
+                }
+
+            }
+            else
+            {
+                outputText = string.Join('\n', results.Select(x => x.TranslatedText));
+                File.WriteAllText(outputFile, outputText);
+
+            }
+
+
+
 
             return results.Count;
         }
@@ -183,7 +213,7 @@ namespace DeepLBatch
         /// <param name="cancellationToken">Can cancel the translations</param>
         /// <returns>The translated items.</returns>
         /// <exception cref="BatchParseException"></exception>
-        public List<Translation> TranslateFile(string filePath, int batchSize = 100, CancellationToken cancellationToken = default)
+        public List<Translation> TranslateFile(string filePath, bool noApiRequests, int batchSize = 100, CancellationToken cancellationToken = default)
         {
             int startingLineNumber = 1; //The one based line count for error messages.
             int endingLineNumber = 1;
@@ -210,9 +240,9 @@ namespace DeepLBatch
 
                     this.ProgressUpdate.Invoke(this, progress);
 
-                    results.AddRange(Translate(batch, cancellationToken));
+                    results.AddRange(Translate(batch, noApiRequests,  cancellationToken));
 
-                    startingLineNumber += endingLineNumber;
+                    startingLineNumber = endingLineNumber;
                 }
             }
             catch (Exception ex)

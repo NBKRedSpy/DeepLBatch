@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "DeepLBatch": {
-      "commandName": "Project",
-      "commandLineArgs": "translate \"c:\\work\\translation.txt\" \"c:\\work\\out.txt\" zh"
-    }
-  }
-}
