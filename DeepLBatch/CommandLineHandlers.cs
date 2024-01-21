@@ -49,6 +49,119 @@ namespace DeepLBatch
             Console.WriteLine(message); 
         }
 
+        [Command(Aliases = ["d"], Description = "Translates a document.")]
+        public void TranslateDocument(
+            [Argument] string inputFile,
+            [Argument] string outputFile,
+
+            [Option('a', Description = "If not provided, will use the API key previously stored with the set-API-key command if available.")]
+            string? apiKey = null,
+
+            [Argument(Description = "The source language. Defaults to auto detect.  The list of Language codes can be found here https://www.deepl.com/docs-api/translate-text")]
+            string? sourceLanguage = null,
+
+            [Option(Description = "The destination language. The list of Language codes can be found here https://www.deepl.com/docs-api/translate-text")]
+            string destinationLanguage = LanguageCode.EnglishAmerican)
+        {
+            try
+            {
+                string? actualApiKey = GetApiKey(apiKey);
+                if (actualApiKey is null) { return; }
+
+                var processor = new TranslationProcessor(
+                   null!,
+                   new DeepLTranslator(actualApiKey, sourceLanguage, destinationLanguage), true);
+
+                Console.Write("Processing document");
+
+                CancellationTokenSource cancellationSource = new CancellationTokenSource();
+
+                Task translationTask = processor.TranslateDocument(inputFile, outputFile, sourceLanguage, destinationLanguage, cancellationSource.Token);
+
+
+
+                Console.CursorVisible = false;
+                
+                _cancelWasRequested = false;
+                Console.CancelKeyPress += Console_CancelKeyPress;
+
+                int animationIndex = 0; //Animate since the user may think the program is not doing anything.
+                int cursorStartPosition = Console.CursorLeft;
+
+                while (translationTask.Wait(500) == false)
+                {
+
+                    animationIndex++;
+                    if(animationIndex == 4)
+                    {
+                        Console.CursorLeft = cursorStartPosition;
+                        Console.Write("    ");
+                        Console.CursorLeft = cursorStartPosition;
+                        animationIndex = 0;
+                    }
+                    else
+                    {
+                        Console.Write('.');
+                    }
+
+                    if (_cancelWasRequested)
+                    {
+                        try
+                        {
+                            cancellationSource.Cancel();
+                        }
+                        catch (TaskCanceledException)
+                        {
+                            //Ignore
+                        }
+
+                        Console.WriteLine();
+                        Console.WriteLine("Operation canceled.  DeepL may have charged the usage amount.");
+
+
+                        return;
+                    }
+
+
+                }
+
+                Console.WriteLine();
+                Console.WriteLine("Done");
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine();
+                Console.WriteLine(ex.ToString());
+
+            }
+            finally
+            {
+                Console.CancelKeyPress -= Console_CancelKeyPress;
+                _cancelWasRequested = false;
+                Console.CursorVisible = true; 
+            }
+        }
+
+        private bool _cancelWasRequested = false;
+        private void Console_CancelKeyPress(object? sender, ConsoleCancelEventArgs e)
+        {
+            _cancelWasRequested = true;
+        }
+
+        private static string? GetApiKey(string? apiKey)
+        {
+            var foundApiKey = string.IsNullOrEmpty(apiKey) ? Program.GetApiKey() : apiKey;
+
+            if (string.IsNullOrEmpty(foundApiKey))
+            {
+                Console.WriteLine("The API key must be provided with the --api-key option, or stored previously using the set-api-key command.");
+                return null;
+            }
+
+            return foundApiKey;
+        }
+
 
         [Command(Aliases = ["t"], Description = "Translates the lines in input file and writes to the output file.  Alias is t.")]
         public void Translate(
@@ -73,8 +186,8 @@ namespace DeepLBatch
             [Option('d', Description = "Throws an error if an entry is not in cache.  Prevents API calls for debugging purposes.")]
             bool noApiRequests = false,
 
-            [Option('p', Description = "Exports the source text and the translated text in a pipe delminited format.")]
-            bool exportPsv = false
+            [Option('t', Description = "Exports the source text and the translated text in a tab delminited format.")]
+            bool exportTsv = false
 
 
             )
@@ -83,16 +196,10 @@ namespace DeepLBatch
 
             try
             {
+                string? actualApiKey = GetApiKey(apiKey);
+                if (actualApiKey is null) { return; }
 
-                apiKey = string.IsNullOrEmpty(apiKey) ? Program.GetApiKey() : apiKey;
-
-                if (string.IsNullOrEmpty(apiKey))
-                {
-                    Console.WriteLine("The API key must be provided with the --api-key option, or stored previously using the set-api-key command.");
-                    return;
-                }
-
-                if(sourceLanguage == null && ignoreCache == false)
+                if (sourceLanguage == null && ignoreCache == false)
                 {
                     Console.WriteLine("""
 Source Language must be set for the translation cache to be used.  
@@ -102,20 +209,25 @@ Provide a source language or use --ignore-cache to not use the cache.
                 }
 
 
+                long charactersSentToApi = 0;
+
                 using (var liteDb = new LiteDatabase())
                 {
                     processor = new(
                         new DeepLBatch.DbRepository(liteDb), 
-                        new DeepLTranslator(apiKey, sourceLanguage, destinationLanguage),
+                        new DeepLTranslator(actualApiKey, sourceLanguage, destinationLanguage),
                         ignoreCache);
 
                     Console.CursorVisible = false;
                     processor.ProgressUpdate += Processor_ProgressUpdate;
 
-                    var translations = processor.TranslateFile(inputFile, outputFile, noApiRequests, exportPsv, batchSize);
+
+                    int sentTranslations = processor.TranslateFile(inputFile, outputFile, noApiRequests, exportTsv,
+                        out charactersSentToApi, batchSize);
                 }
 
                 Console.WriteLine("\rTranslation Completed                                            ");
+                Console.WriteLine($"{charactersSentToApi} uncached characters were sent to DeepL for translation");
 
             }
             catch (Exception ex)

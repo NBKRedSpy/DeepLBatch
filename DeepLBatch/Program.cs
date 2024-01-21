@@ -18,8 +18,6 @@ namespace DeepLBatch
 
         static void Main(string[] args)
         {
-            var x = Assembly.GetExecutingAssembly();
-
             CoconaApp.Run<CommandLineHandlers>();
         }
 

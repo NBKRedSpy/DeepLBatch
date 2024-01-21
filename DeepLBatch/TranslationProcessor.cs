@@ -41,6 +41,23 @@ namespace DeepLBatch
 
         }
 
+
+        /// <summary>
+        /// Translates a document.  
+        /// DeepL documents indicates document translations are counted as at least 50,000 characters for translation usage.
+        /// Supports docx, pptx, xlsx, pdf, htm/html, txt, xlf/xliff 2.1
+        /// Generally takes seconds but could take minutes based on server load.
+        /// </summary>
+        /// <param name="inputFile"></param>
+        /// <param name="outputFile"></param>
+        /// <param name="sourceLanguage"></param>
+        /// <param name="targetLanguage"></param>
+        public Task TranslateDocument(string inputFile, string outputFile, string? sourceLanguage, string targetLanguage,
+            CancellationToken cancellationToken = default)
+        {
+            return _deepLTranslator.TranslateDocument(inputFile, outputFile, sourceLanguage, targetLanguage, cancellationToken);
+        }
+
         /// <summary>
         /// Uses DeepL to translate each line in the strings parameter.
         /// </summary>
@@ -49,9 +66,11 @@ namespace DeepLBatch
         /// <returns>The results of the translation.</returns>
         /// <exception cref="BatchParseException">Thrown when a translation files</exception>
         public List<Translation> Translate(IEnumerable<string> strings,
-            bool noApiRequests, CancellationToken cancellationToken = default)
+            bool noApiRequests, out long charactersSentToApi, CancellationToken cancellationToken = default)
         {
             List<Translation> results = new List<Translation>();
+
+            charactersSentToApi = 0;
 
             try
             {
@@ -89,6 +108,8 @@ namespace DeepLBatch
 
                     if (translation == null)
                     {
+                        charactersSentToApi = +trimmedText.Length;
+
                         translation = new Translation() { Text = trimmedText, SourceLanguage = sourceLanguage ?? "", TranslatedLanguage = targetLanguage};
                         deepLTranslationList.Add(translation);
                     }
@@ -170,24 +191,25 @@ namespace DeepLBatch
         /// <param name="batchSize">The number of lines to send to DeepL per api call.</param>
         /// <param name="cancellationToken">Can cancel the translations</param>
         /// <returns></returns>
-        public int TranslateFile(string inputFile, string outputFile, bool noApiRequests, bool exportPsv, int batchSize = 100, CancellationToken cancellationToken = default)
+        public int TranslateFile(string inputFile, string outputFile, bool noApiRequests, bool exportTsv, out long charactersSentToApi, 
+            int batchSize = 100, CancellationToken cancellationToken = default)
         {
             List<Translation> results;
 
-            results = TranslateFile(inputFile, noApiRequests, batchSize);
+            results = TranslateFile(inputFile, noApiRequests, out charactersSentToApi, batchSize);
 
             //Debug
             //string outputText = string.Join('\n', results.Select(x => String.Join("|", x.Text, x.TranslatedText)));
 
             string outputText;
 
-            if(exportPsv)
+            if(exportTsv)
             {
 
                 using (StreamWriter fileWriter =  File.CreateText(outputFile))
                 {
                     //CsvWriter.Write(fileWriter, Array.Empty<string>(), results.Select(x => new string[] { x.Text, x.TranslatedText }), '|', true);
-                    CsvWriter.Write(fileWriter, new string[] { "", "" }, results.Select(x => new string[] { x.Text, x.TranslatedText }), '|', true);
+                    CsvWriter.Write(fileWriter, new string[] { "", "" }, results.Select(x => new string[] { x.Text, x.TranslatedText }), '\t', true);
                     fileWriter.Flush();
                 }
 
@@ -213,7 +235,8 @@ namespace DeepLBatch
         /// <param name="cancellationToken">Can cancel the translations</param>
         /// <returns>The translated items.</returns>
         /// <exception cref="BatchParseException"></exception>
-        public List<Translation> TranslateFile(string filePath, bool noApiRequests, int batchSize = 100, CancellationToken cancellationToken = default)
+        public List<Translation> TranslateFile(string filePath, bool noApiRequests, out long charactersSentToApi, int batchSize = 100,
+            CancellationToken cancellationToken = default)
         {
             int startingLineNumber = 1; //The one based line count for error messages.
             int endingLineNumber = 1;
@@ -223,6 +246,7 @@ namespace DeepLBatch
 
             TranslationProgress progress = new();
 
+            charactersSentToApi = 0;
             try
             {
                 List<string> allLines = File.ReadLines(filePath).ToList();
@@ -240,7 +264,7 @@ namespace DeepLBatch
 
                     this.ProgressUpdate.Invoke(this, progress);
 
-                    results.AddRange(Translate(batch, noApiRequests,  cancellationToken));
+                    results.AddRange(Translate(batch, noApiRequests, out charactersSentToApi,cancellationToken));
 
                     startingLineNumber = endingLineNumber;
                 }

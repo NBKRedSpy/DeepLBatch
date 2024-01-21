@@ -45,6 +45,21 @@ namespace DeepLBatch
 
 
         /// <summary>
+        /// Translates a supported document format.
+        /// Note the docs says that calls are counted as a minimum of 50,000 characters.
+        /// </summary>
+        /// <param name="inputFile"></param>
+        /// <param name="outputFile"></param>
+        /// <param name="sourceLanguage"></param>
+        /// <param name="targetLanguage"></param>
+        public async Task TranslateDocument(string inputFile, string outputFile, string? sourceLanguage, 
+            string targetLanguage, CancellationToken cancellationToken = default)
+        {
+            await _translator.TranslateDocumentAsync(new FileInfo(inputFile), new FileInfo(outputFile), sourceLanguage,
+                targetLanguage, null, cancellationToken);
+        }
+
+        /// <summary>
         /// Translates a list of text items.
         /// </summary>
         /// <param name="texts"></param>
