@@ -54,7 +54,7 @@ This mode supports docx, pptx, xlsx, pdf, htm/html, txt, xlf/xliff 2.1.
 
 Spreadsheets may have issues importing text files with non-English characters.  It may manifest as less lines shown than actually translated.
 
-This is a common spreadsheet program issue and not related to the translation.  In this case, try using the translate command's psv option (-p). 
+This is a common spreadsheet program issue and not related to the translation.  In this case, try using the translate command's tsv option (-t). 
 The output file will be in the format of ```Input Text(a tab)Output Text```.  When importing into the spreadsheet, use the "split text to columns" command with tab as the delimiter. 
 
 ### Overview Usage Help
